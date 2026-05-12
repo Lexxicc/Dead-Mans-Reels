@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dead Mans Reels">
+<meta name="theme-color" content="#0a1628">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Dead Man's Reels v0.0.01</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a1628;
+    --bg2: #142840;
+    --brass: #c47a2b;
+    --brass-bright: #e89c4a;
+    --sea: #1a5c3a;
+    --sea-bright: #2d8a55;
+    --sunset: #d4380d;
+    --parch: #e8d5a3;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--parch); font-family: 'Roboto', sans-serif; overflow: hidden; overscroll-behavior: none; }
+  body {
+    min-height: 100dvh; height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+    display: flex; flex-direction: column;
+    background:
+      radial-gradient(ellipse 100% 50% at 50% 100%, rgba(212,56,13,0.18) 0%, transparent 60%),
+      linear-gradient(180deg, #0a1628 0%, #142840 50%, #0a1628 100%);
+  }
+  /* Ocean horizon silhouette */
+  body::before {
+    content: ''; position: fixed; left: 0; right: 0; top: 35%; height: 4px;
+    background: linear-gradient(to right, transparent, rgba(212,56,13,0.4), rgba(232,213,163,0.3), rgba(212,56,13,0.4), transparent);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: ''; position: fixed; left: 0; right: 0; bottom: 0; height: 30vh;
+    background: linear-gradient(to top, rgba(10,22,40,0.95), transparent);
+    pointer-events: none; z-index: 0;
+  }
+  .heading { font-family: 'Pirata One', cursive; letter-spacing: 0.06em; }
+  .brass-text { color: var(--brass-bright); }
+
+  /* Porthole frame */
+  #porthole {
+    position: relative;
+    width: min(90vw, 360px); aspect-ratio: 1; margin: 0 auto;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--bg2) 0%, var(--bg) 70%);
+    box-shadow:
+      0 0 0 6px var(--brass),
+      0 0 0 14px #6b3e15,
+      0 0 0 18px var(--brass-bright),
+      inset 0 0 30px rgba(0,0,0,0.7);
+  }
+  #porthole::before {
+    content: ''; position: absolute; inset: -10px;
+    background: repeating-conic-gradient(from 0deg, var(--brass) 0deg 6deg, #6b3e15 6deg 12deg);
+    border-radius: 50%;
+    z-index: -1;
+    mask: radial-gradient(circle, transparent 65%, black 67%);
+    -webkit-mask: radial-gradient(circle, transparent 65%, black 67%);
+  }
+  #reels-area {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 78%; height: 36%;
+    background: linear-gradient(180deg, #0a1628 0%, #1a3050 50%, #0a1628 100%);
+    border: 3px solid var(--brass);
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    overflow: hidden;
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.7);
+  }
+  .reel {
+    background: linear-gradient(180deg, rgba(232,213,163,0.04) 0%, rgba(232,213,163,0.08) 50%, rgba(232,213,163,0.04) 100%);
+    border-right: 2px solid rgba(196,122,43,0.5);
+    overflow: hidden; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .reel:last-child { border-right: none; }
+  .reel.spinning .symbol { animation: reel-spin 0.12s linear infinite; }
+  @keyframes reel-spin { 0%{transform:translateY(-30px)} 100%{transform:translateY(30px)} }
+  .symbol { width: 80%; height: 80%; display: flex; align-items: center; justify-content: center; }
+  .symbol svg { width: 100%; height: 100%; }
+  .symbol.win { animation: winpulse 0.55s ease-in-out infinite alternate; }
+  @keyframes winpulse { from{filter:drop-shadow(0 0 0 transparent)} to{filter:drop-shadow(0 0 14px var(--brass-bright))} }
+  /* Payline visualisation */
+  #payline {
+    position: absolute; left: 11%; right: 11%; top: 50%; transform: translateY(-50%);
+    height: 3px; background: var(--sunset); opacity: 0;
+    z-index: 5; pointer-events: none;
+    box-shadow: 0 0 12px var(--sunset);
+  }
+  #payline.show { opacity: 1; animation: payline-pulse 0.6s ease-in-out 2; }
+  @keyframes payline-pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+  /* Jackpot meter */
+  #jackpot-meter {
+    background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+    border: 2px solid var(--brass);
+    padding: 6px 12px; text-align: center;
+    box-shadow: 0 0 16px rgba(196,122,43,0.4);
+  }
+  #jackpot-value {
+    font-family: 'Pirata One', cursive; color: var(--brass-bright);
+    font-size: 1.9rem; letter-spacing: 0.05em;
+    text-shadow: 0 0 12px var(--brass), 0 0 24px var(--sunset);
+    animation: jackpot-glow 2s ease-in-out infinite alternate;
+  }
+  @keyframes jackpot-glow { from{text-shadow:0 0 8px var(--brass)} to{text-shadow:0 0 18px var(--brass-bright), 0 0 28px var(--sunset)} }
+  #jackpot-label { color: var(--parch); font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; }
+
+  /* Buttons */
+  .btn {
+    font-family: 'Pirata One', cursive; letter-spacing: 0.08em;
+    padding: 8px 14px; background: linear-gradient(180deg, #1a3050 0%, #0a1628 100%);
+    color: var(--parch); border: 2px solid var(--brass);
+    cursor: pointer; transition: all 0.12s;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.6), inset 0 1px 0 rgba(232,213,163,0.15);
+    min-height: 44px;
+    font-size: 1.05rem;
+  }
+  .btn:hover:not(:disabled) { background: linear-gradient(180deg, var(--brass) 0%, #6b3e15 100%); color: #fff; }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-sea { color: var(--sea-bright); border-color: var(--sea-bright); }
+  .btn-spin {
+    font-family: 'Pirata One', cursive; font-size: 1.5rem;
+    padding: 16px 24px; background: linear-gradient(180deg, var(--sunset) 0%, #8a2407 100%);
+    color: var(--parch); border: 4px solid var(--brass-bright); cursor: pointer;
+    letter-spacing: 0.16em;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.5), 0 0 24px rgba(212,56,13,0.5),
+                inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -2px 0 rgba(0,0,0,0.4);
+    min-height: 64px; min-width: 110px;
+    border-radius: 50%;
+  }
+  .btn-spin:disabled { opacity: 0.4; filter: grayscale(0.6); cursor: not-allowed; }
+
+  /* Modals */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
+  .modal { background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%); border: 3px solid var(--brass); padding: 20px 18px; max-width: 460px; width: 100%; max-height: 92dvh; overflow-y: auto; }
+  .modal h2 { font-family: 'Pirata One', cursive; color: var(--brass-bright); letter-spacing: 0.08em; font-size: 1.6rem; margin: 0 0 10px; }
+  .modal h3 { font-family: 'Pirata One', cursive; color: var(--sea-bright); letter-spacing: 0.06em; font-size: 1.05rem; margin: 12px 0 4px; }
+  .modal p, .modal li { font-size: 0.95rem; color: var(--parch); line-height: 1.45; }
+  .modal ul { padding-left: 18px; margin: 6px 0; }
+
+  /* Big-win */
+  #bigwin-overlay { position: fixed; inset: 0; z-index: 250; display: none; align-items: center; justify-content: center; pointer-events: none; }
+  #bigwin-overlay.show { display: flex; }
+  #bigwin-overlay .bw-text {
+    font-family: 'Pirata One', cursive; font-size: clamp(2.2rem, 10vw, 5rem);
+    color: var(--brass-bright); text-shadow: 0 0 18px var(--sunset), 0 0 40px var(--brass);
+    letter-spacing: 0.08em; text-align: center;
+    animation: bw-rise 0.6s ease-out;
+  }
+  @keyframes bw-rise { from{transform:translateY(20px) scale(0.6); opacity:0} to{transform:translateY(0) scale(1); opacity:1} }
+  /* Jackpot overlay (4s) */
+  #jackpot-overlay { position: fixed; inset: 0; z-index: 260; display: none; align-items: center; justify-content: center; pointer-events: none; background: rgba(0,0,0,0.6); }
+  #jackpot-overlay.show { display: flex; }
+  #jackpot-overlay .jp-text {
+    font-family: 'Pirata One', cursive; font-size: clamp(2.5rem, 12vw, 6rem);
+    color: var(--brass-bright); text-shadow: 0 0 30px var(--sunset), 0 0 60px var(--brass-bright);
+    letter-spacing: 0.06em; text-align: center;
+    animation: jp-burst 4s ease-out forwards;
+  }
+  @keyframes jp-burst { 0%{transform:scale(0.4); opacity:0} 15%{transform:scale(1.1); opacity:1} 85%{transform:scale(1); opacity:1} 100%{transform:scale(1.2); opacity:0} }
+
+  /* Coin burst */
+  .coin-burst { position: fixed; pointer-events: none; z-index: 255; font-size: 30px; }
+  .coin-burst.fly { animation: coin-fly 1.3s ease-out forwards; }
+  @keyframes coin-fly { from{transform:translate(0,0); opacity:1} to{transform:translate(var(--tx),var(--ty)); opacity:0} }
+
+  /* Settings */
+  .srow { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(196,122,43,0.2); font-size: 0.95rem; }
+  .srow:last-child { border-bottom: none; }
+  .toggle { position: relative; width: 48px; height: 26px; background: var(--bg2); border: 1px solid var(--brass); cursor: pointer; }
+  .toggle::after { content: ''; position: absolute; top: 1px; left: 1px; width: 22px; height: 22px; background: var(--brass); transition: left 0.12s; }
+  .toggle.on::after { left: 23px; background: var(--brass-bright); }
+
+  /* Refill */
+  #refill-banner {
+    position: fixed; top: 4vh; left: 50%; transform: translateX(-50%);
+    background: var(--bg2); border: 2px solid var(--brass); color: var(--brass-bright);
+    padding: 8px 14px; font-family: 'Pirata One', cursive; letter-spacing: 0.06em;
+    z-index: 220; display: none; font-size: 1rem;
+  }
+  #refill-banner.show { display: block; animation: rb 4s ease-in-out forwards; }
+  @keyframes rb { 0%{opacity:0;transform:translate(-50%,-10px)} 10%,80%{opacity:1;transform:translate(-50%,0)} 100%{opacity:0;transform:translate(-50%,-10px)} }
+
+  /* Treasure map overlay */
+  #map-overlay { position: fixed; inset: 0; z-index: 240; display: none; align-items: center; justify-content: center; background: rgba(15,30,50,0.94); padding: 16px; }
+  #map-overlay.show { display: flex; }
+  #map-overlay .map-card {
+    background: var(--parch); color: var(--bg); padding: 16px;
+    border: 4px solid var(--brass); max-width: 380px; width: 100%;
+    box-shadow: 0 0 40px rgba(196,122,43,0.6);
+    border-radius: 6px;
+    font-family: 'Pirata One', cursive;
+  }
+  .map-pick {
+    width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, #b89a6e 0%, #d8c08a 100%);
+    border: 3px solid var(--brass); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.15s;
+    font-size: 2.4rem;
+  }
+  .map-pick:hover { background: linear-gradient(135deg, #c8a87a 0%, #e8d5a3 100%); transform: scale(1.04); }
+  .map-pick.revealed { cursor: default; transform: scale(1); }
+  .map-pick.revealed:hover { transform: scale(1); }
+  #win-display { color: var(--brass-bright); font-family: 'Pirata One', cursive; letter-spacing: 0.06em; min-height: 1.4em; font-size: 1.05rem; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="refill-banner"></div>
+<div id="bigwin-overlay"><div class="bw-text" id="bw-text">CANNON FIRE</div></div>
+<div id="jackpot-overlay"><div class="jp-text">DEAD MAN'S JACKPOT</div></div>
+
+<header class="px-3 py-2 flex items-center justify-between" style="border-bottom:1px solid rgba(196,122,43,0.4); z-index:1; position:relative; flex-shrink:0">
+  <div class="heading text-xl brass-text">DEAD MAN'S REELS</div>
+  <div class="flex items-center gap-3 text-sm">
+    <div>BAL <span id="balance" class="brass-text font-bold">10000</span></div>
+    <button class="btn" style="padding:6px 10px;min-height:36px" onclick="openSettings()" aria-label="Settings">⚙</button>
+  </div>
+</header>
+
+<div class="px-3 py-2" style="z-index:1; position:relative; flex-shrink:0">
+  <div id="jackpot-meter">
+    <div id="jackpot-label">Jackpot</div>
+    <div id="jackpot-value">500</div>
+  </div>
+</div>
+
+<div class="flex-1 min-h-0 flex flex-col items-center justify-center px-3" style="z-index:1; position:relative">
+  <div id="porthole">
+    <div id="reels-area">
+      <div class="reel" id="reel-0"><div class="symbol"></div></div>
+      <div class="reel" id="reel-1"><div class="symbol"></div></div>
+      <div class="reel" id="reel-2"><div class="symbol"></div></div>
+    </div>
+    <div id="payline"></div>
+  </div>
+  <div id="win-display" class="mt-3 text-center"></div>
+</div>
+
+<footer class="px-3 pt-2 pb-3" style="z-index:1; position:relative; flex-shrink:0">
+  <div class="flex items-center justify-between mb-2 gap-2">
+    <div class="flex items-center gap-1 text-sm">
+      <span style="color:var(--sea-bright); font-family:'Pirata One'; letter-spacing:0.08em; font-size:1.05rem">BET</span>
+      <button class="btn" style="padding:6px 10px;min-height:36px;min-width:36px" onclick="adjustBet(0.5)" aria-label="Halve bet">½</button>
+      <div id="bet-display" class="brass-text font-bold" style="min-width:42px; text-align:center; font-family:'Pirata One'; font-size:1.15rem">5</div>
+      <button class="btn" style="padding:6px 10px;min-height:36px;min-width:36px" onclick="adjustBet(2)" aria-label="Double bet">×2</button>
+      <button class="btn btn-sea" style="padding:6px 10px;min-height:36px" onclick="adjustBet('max')">MAX</button>
+    </div>
+    <button class="btn" style="padding:6px 10px;min-height:36px" onclick="openPaytable()">PAYS</button>
+  </div>
+  <div class="flex items-center justify-between gap-3">
+    <button class="btn btn-sea" id="auto-btn" onclick="toggleAuto()" style="min-height:52px">AUTO</button>
+    <button class="btn-spin" id="spin-btn" onclick="spin()">PULL</button>
+    <button class="btn" id="turbo-btn" onclick="toggleTurbo()" style="min-height:52px">TURBO</button>
+  </div>
+  <div class="text-center text-xs mt-2" style="color:rgba(196,122,43,0.55); font-family:'Pirata One'; letter-spacing:0.1em">v0.0.01 · Dead Man's Reels · Slot Launch</div>
+</footer>
+
+<div id="settings-modal" class="modal-bg hidden" onclick="if(event.target===this) closeSettings()">
+  <div class="modal">
+    <h2>SETTINGS</h2>
+    <div class="srow"><span>Sound</span><div class="toggle on" id="t-sound" onclick="toggleSound()"></div></div>
+    <div class="srow"><span>Turbo</span><div class="toggle" id="t-turbo" onclick="toggleTurbo()"></div></div>
+    <div class="srow"><span>Auto-spin</span><span id="auto-default-display" style="color:var(--brass-bright)">25</span></div>
+    <div class="srow"><span>RTP target</span><span style="color:var(--brass-bright)" id="rtp-display">96.0% (PIR_RTP_B)</span></div>
+    <div class="srow"><span>Volatility</span><span style="color:var(--sea-bright)">MED</span></div>
+    <div class="srow"><span>Jackpot pool</span><span style="color:var(--brass-bright)" id="jp-pool-display">500</span></div>
+    <div class="srow"><span>Reset wallet</span><button class="btn btn-sea" onclick="resetWallet()" style="padding:6px 12px;min-height:36px">RESET</button></div>
+    <h3>Patch Notes</h3>
+    <div id="patch-notes" style="max-height:130px; overflow-y:auto; border:1px solid rgba(196,122,43,0.2); padding:6px 10px; font-size:0.85rem"></div>
+    <div class="flex gap-2 mt-3 justify-end"><button class="btn" onclick="closeSettings()">CLOSE</button></div>
+  </div>
+</div>
+
+<div id="paytable-modal" class="modal-bg hidden" onclick="if(event.target===this) closePaytable()">
+  <div class="modal">
+    <h2>PAYTABLE</h2>
+    <p class="text-xs">3 reels, single centre payline. Wins pay LEFT-to-RIGHT.</p>
+    <div id="paytable-body" class="mt-3"></div>
+    <h3>Jackpot</h3>
+    <p>3× JOLLY ROGER hits the progressive jackpot — wins the full pool, resets to 500. Each spin adds 2% of bet.</p>
+    <h3>Treasure Map</h3>
+    <p>2+ CHEST on the payline triggers a pick game. X marks 5-50× coin reward. Anchor = nothing. Kraken = 5 free spins.</p>
+    <ul><li>2 chests = 1 pick</li><li>3 chests = 2 picks</li></ul>
+    <div class="flex gap-2 mt-3 justify-end"><button class="btn" onclick="closePaytable()">CLOSE</button></div>
+  </div>
+</div>
+
+<div id="intro-modal" class="modal-bg hidden" onclick="if(event.target===this) closeIntro()">
+  <div class="modal">
+    <h2>DEAD MAN'S REELS</h2>
+    <p style="color:var(--brass-bright); letter-spacing:0.06em; font-family:'Pirata One'; font-size:1rem">SLOT LAUNCH</p>
+    <p class="mt-3">Three reels. One line. The Jolly Roger waits.</p>
+    <p>Land 2+ chests on the payline to open the treasure map.</p>
+    <p>Three Jolly Rogers, you take the lot.</p>
+    <div class="flex gap-2 mt-4 justify-end">
+      <button class="btn btn-sea" onclick="openPaytable(); closeIntro()">VIEW PAYS</button>
+      <button class="btn" onclick="closeIntro()">SET SAIL</button>
+    </div>
+  </div>
+</div>
+
+<div id="map-overlay">
+  <div class="map-card">
+    <h2 style="color:var(--bg); text-align:center; margin-bottom:4px">TREASURE MAP</h2>
+    <p style="color:var(--bg); text-align:center; font-size:0.85rem; opacity:0.85; margin-bottom:10px" id="map-instruction">Pick a square. Trust your gut.</p>
+    <div id="map-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px"></div>
+    <p style="color:var(--bg); text-align:center; font-size:0.95rem; margin-bottom:8px" id="map-result"></p>
+    <button class="btn" id="map-close-btn" onclick="closeMap()" style="width:100%; min-height:42px; display:none">CONTINUE</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const PATCH_NOTES = [
+    { v:'v0.0.01', date:'2026-05', notes:['Initial OPW build. 3-reel single payline. Progressive JOLLY jackpot. CHEST treasure-map pick bonus.'] },
+  ];
+
+  const CODE = 'PIR';
+  const RTP_TARGET = 0.96;
+  const RTP_LABEL = '96.0% (PIR_RTP_B)';
+  const JACKPOT_CONTRIB = 0.02;
+  const JACKPOT_RESET = 500;
+
+  const SYMBOLS = [
+    { k:'JOLLY',   weight: 1, pays:{3:200} },
+    { k:'ANCHOR',  weight: 2, pays:{3:50, 2:5} },
+    { k:'COMPASS', weight: 3, pays:{3:30, 2:3} },
+    { k:'CHEST',   scatter:true, weight: 4, pays:{3:20, 2:2} },
+    { k:'SWORDS',  weight: 6, pays:{3:15, 2:1.5} },
+    { k:'WHEEL',   weight: 8, pays:{3:10, 2:1} },
+    { k:'CANNON',  weight:10, pays:{3:6, 2:0.5} },
+    { k:'COIN',    weight:14, pays:{3:3} },
+  ];
+
+  const BET_MIN = 1, BET_MAX = 50, BET_DEFAULT = 5;
+  const REFILL_THRESHOLD = 200;
+  const REFILL_TO = 5000;
+
+  const state = {
+    wallet: 10000,
+    bet: BET_DEFAULT,
+    history: [],
+    settings: { sound: true, turbo: false, autoSpinDefault: 25 },
+    auto: 0,
+    spinning: false,
+    bonusFreeSpins: 0,
+    jackpot: JACKPOT_RESET,
+    mapPicks: 0,
+    mapRevealed: [],
+    mapItems: [],
+  };
+
+  function loadAll() {
+    try {
+      const w = parseInt(localStorage.getItem(`${CODE}_wallet`), 10);
+      if (Number.isFinite(w) && w >= 0) state.wallet = w;
+      const h = JSON.parse(localStorage.getItem(`${CODE}_history`) || '[]');
+      if (Array.isArray(h)) state.history = h.slice(0, 20);
+      const s = JSON.parse(localStorage.getItem(`${CODE}_settings`) || 'null');
+      if (s && typeof s === 'object') state.settings = Object.assign(state.settings, s);
+      const jp = parseInt(localStorage.getItem(`${CODE}_jackpot`), 10);
+      if (Number.isFinite(jp) && jp >= JACKPOT_RESET) state.jackpot = jp;
+    } catch (e) {
+      console.warn(`[${CODE}] corrupt localStorage`, e);
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    let lastRefill = null;
+    try { lastRefill = localStorage.getItem(`${CODE}_lastRefillDate`); } catch {}
+    if (state.wallet < REFILL_THRESHOLD && lastRefill !== today) {
+      const before = state.wallet;
+      state.wallet = REFILL_TO;
+      try { localStorage.setItem(`${CODE}_lastRefillDate`, today); } catch {}
+      showRefillBanner(REFILL_TO - before);
+    }
+    saveAll();
+  }
+  function saveAll() {
+    try {
+      localStorage.setItem(`${CODE}_wallet`, String(state.wallet));
+      localStorage.setItem(`${CODE}_jackpot`, String(state.jackpot));
+    } catch {}
+  }
+  function saveHistory() { try { localStorage.setItem(`${CODE}_history`, JSON.stringify(state.history.slice(0, 20))); } catch {} }
+  function saveSettings() { try { localStorage.setItem(`${CODE}_settings`, JSON.stringify(state.settings)); } catch {} }
+
+  function rng() { return Math.random(); }
+  function weightedSymbolPick() {
+    const totalW = SYMBOLS.reduce((a, b) => a + b.weight, 0);
+    let r = rng() * totalW;
+    for (const s of SYMBOLS) { if ((r -= s.weight) <= 0) return s.k; }
+    return SYMBOLS[SYMBOLS.length - 1].k;
+  }
+
+  let ac = null, master = null;
+  function audio() {
+    if (!ac) { try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      master = ac.createGain(); master.gain.value = state.settings.sound ? 0.2 : 0;
+      master.connect(ac.destination);
+    } catch { ac = null; } }
+    if (ac && ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, type='triangle', vol=0.35, attack=0.003) {
+    const a = audio(); if (!a || !state.settings.sound) return;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = freq;
+    const t = a.currentTime;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noiseBurst(dur=0.18, vol=0.4) {
+    const a = audio(); if (!a || !state.settings.sound) return;
+    const buf = a.createBuffer(1, a.sampleRate * dur, a.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const src = a.createBufferSource(); src.buffer = buf;
+    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 280; lp.Q.value = 0.5;
+    const g = a.createGain(); g.gain.value = vol;
+    src.connect(lp); lp.connect(g); g.connect(master);
+    src.start();
+  }
+  const sfx = {
+    pull()   { tone(110, 0.18, 'sawtooth', 0.3); },
+    spin()   { tone(160, 0.06, 'triangle', 0.18); },
+    stop()   { tone(220, 0.06, 'square', 0.24); },
+    win()    { [262,330,392].forEach((f,i) => setTimeout(() => tone(f, 0.2, 'triangle', 0.4), i*70)); },
+    bigwin() { noiseBurst(0.32, 0.5); [262,330,392,494,587].forEach((f,i) => setTimeout(() => tone(f, 0.24, 'triangle', 0.42), i*80)); },
+    cannon() { noiseBurst(0.4, 0.55); tone(60, 0.4, 'sine', 0.6); },
+    coin()   { tone(880, 0.05, 'square', 0.3); },
+  };
+
+  function svgFor(k) {
+    const m = {
+      JOLLY: `<svg viewBox="0 0 64 64"><rect x="6" y="8" width="52" height="38" fill="#0a0a0a" stroke="#c47a2b" stroke-width="2"/><rect x="6" y="46" width="52" height="2" fill="#6b3e15"/><line x1="6" y1="50" x2="6" y2="62" stroke="#c47a2b" stroke-width="2"/><path d="M 32 16 Q 24 16 22 22 Q 22 28 28 30 L 30 32 L 30 36 L 34 36 L 34 32 L 36 30 Q 42 28 42 22 Q 40 16 32 16 Z" fill="#fff"/><circle cx="28" cy="24" r="2" fill="#0a0a0a"/><circle cx="36" cy="24" r="2" fill="#0a0a0a"/><line x1="14" y1="40" x2="50" y2="22" stroke="#fff" stroke-width="3" stroke-linecap="round"/><line x1="14" y1="22" x2="50" y2="40" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>`,
+      ANCHOR: `<svg viewBox="0 0 64 64"><circle cx="32" cy="10" r="6" fill="none" stroke="#3a4a55" stroke-width="3"/><rect x="29" y="16" width="6" height="32" fill="#3a4a55"/><path d="M 14 38 Q 14 48 32 50 Q 50 48 50 38" stroke="#3a4a55" stroke-width="4" fill="none" stroke-linecap="round"/><rect x="20" y="24" width="24" height="4" fill="#3a4a55"/><circle cx="14" cy="38" r="2" fill="#3a4a55"/><circle cx="50" cy="38" r="2" fill="#3a4a55"/></svg>`,
+      COMPASS: `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="#c47a2b" stroke="#6b3e15" stroke-width="2"/><circle cx="32" cy="32" r="18" fill="#e8d5a3"/><polygon points="32,16 36,32 32,48 28,32" fill="#d4380d" stroke="#0a1628" stroke-width="1"/><polygon points="32,16 32,32 28,32" fill="#fff"/><circle cx="32" cy="32" r="2" fill="#0a1628"/><text x="32" y="14" text-anchor="middle" font-family="serif" font-size="6" fill="#6b3e15">N</text></svg>`,
+      CHEST: `<svg viewBox="0 0 64 64"><rect x="10" y="24" width="44" height="28" fill="#6b3e15" stroke="#3a2210" stroke-width="2"/><path d="M 10 24 Q 10 14 32 14 Q 54 14 54 24 Z" fill="#8a5022" stroke="#3a2210" stroke-width="2"/><rect x="10" y="34" width="44" height="3" fill="#c47a2b"/><rect x="28" y="30" width="8" height="14" fill="#c47a2b" stroke="#6b3e15" stroke-width="1"/><circle cx="32" cy="37" r="1.5" fill="#0a1628"/><rect x="14" y="20" width="3" height="34" fill="#c47a2b"/><rect x="47" y="20" width="3" height="34" fill="#c47a2b"/><circle cx="22" cy="10" r="2" fill="#e8d5a3"/><circle cx="40" cy="8" r="2.5" fill="#e8d5a3"/><circle cx="46" cy="12" r="1.5" fill="#e8d5a3"/></svg>`,
+      SWORDS: `<svg viewBox="0 0 64 64"><line x1="12" y1="12" x2="52" y2="52" stroke="#d8d8d8" stroke-width="4" stroke-linecap="round"/><line x1="52" y1="12" x2="12" y2="52" stroke="#d8d8d8" stroke-width="4" stroke-linecap="round"/><rect x="8" y="8" width="10" height="10" rx="2" fill="#c47a2b"/><rect x="46" y="8" width="10" height="10" rx="2" fill="#c47a2b"/><rect x="8" y="46" width="10" height="10" rx="2" fill="#c47a2b"/><rect x="46" y="46" width="10" height="10" rx="2" fill="#c47a2b"/></svg>`,
+      WHEEL: `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="18" fill="none" stroke="#8a5022" stroke-width="3"/><circle cx="32" cy="32" r="5" fill="#6b3e15"/><line x1="32" y1="8" x2="32" y2="20" stroke="#6b3e15" stroke-width="3" stroke-linecap="round"/><line x1="32" y1="44" x2="32" y2="56" stroke="#6b3e15" stroke-width="3" stroke-linecap="round"/><line x1="8" y1="32" x2="20" y2="32" stroke="#6b3e15" stroke-width="3" stroke-linecap="round"/><line x1="44" y1="32" x2="56" y2="32" stroke="#6b3e15" stroke-width="3" stroke-linecap="round"/><line x1="15" y1="15" x2="22" y2="22" stroke="#6b3e15" stroke-width="3" stroke-linecap="round"/><line x1="49" y1="15" x2="42" y2="22" stroke="#6b3e15" stroke-width="3" stroke-linecap="round"/><line x1="15" y1="49" x2="22" y2="42" stroke="#6b3e15" stroke-width="3" stroke-linecap="round"/><line x1="49" y1="49" x2="42" y2="42" stroke="#6b3e15" stroke-width="3" stroke-linecap="round"/></svg>`,
+      CANNON: `<svg viewBox="0 0 64 64"><rect x="10" y="38" width="44" height="14" rx="3" fill="#2a2a2a" stroke="#000" stroke-width="1.5"/><circle cx="14" cy="56" r="6" fill="#3a3a3a"/><circle cx="50" cy="56" r="6" fill="#3a3a3a"/><rect x="50" y="40" width="10" height="10" fill="#2a2a2a"/><circle cx="58" cy="32" r="6" fill="#888" opacity="0.6"/><circle cx="60" cy="26" r="4" fill="#aaa" opacity="0.5"/><circle cx="56" cy="22" r="3" fill="#ccc" opacity="0.4"/></svg>`,
+      COIN: `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="#c47a2b" stroke="#6b3e15" stroke-width="2"/><circle cx="32" cy="32" r="20" fill="#e89c4a"/><path d="M 32 22 Q 26 22 25 26 Q 25 30 30 30 L 32 32 L 32 34 L 34 34 L 34 32 L 35 30 Q 39 28 39 26 Q 38 22 32 22 Z" fill="#6b3e15"/><line x1="22" y1="38" x2="42" y2="42" stroke="#6b3e15" stroke-width="2" stroke-linecap="round"/><line x1="42" y1="38" x2="22" y2="42" stroke="#6b3e15" stroke-width="2" stroke-linecap="round"/></svg>`,
+    };
+    return m[k] || '';
+  }
+
+  function renderReel(reelIdx, sym, opts={}) {
+    const reel = document.getElementById(`reel-${reelIdx}`);
+    const symEl = reel.querySelector('.symbol');
+    symEl.innerHTML = svgFor(sym);
+    if (opts.spinning) reel.classList.add('spinning');
+    else reel.classList.remove('spinning');
+    symEl.classList.toggle('win', !!opts.win);
+  }
+
+  function evaluatePayline(syms) {
+    // syms is [s0, s1, s2]
+    // Check 3-of-a-kind (with wild logic — JOLLY pays 3× outright but isn't a wild here)
+    if (syms[0] === syms[1] && syms[1] === syms[2]) {
+      const sd = SYMBOLS.find(s => s.k === syms[0]);
+      if (sd && sd.pays[3]) return { streak: 3, sym: syms[0], pay: sd.pays[3] };
+    }
+    // 2-of-a-kind on reels 0+1
+    if (syms[0] === syms[1]) {
+      const sd = SYMBOLS.find(s => s.k === syms[0]);
+      if (sd && sd.pays[2]) return { streak: 2, sym: syms[0], pay: sd.pays[2] };
+    }
+    return null;
+  }
+  function countScatters(syms) { return syms.filter(s => s === 'CHEST').length; }
+
+  async function spin() {
+    if (state.spinning) return;
+    const isFree = state.bonusFreeSpins > 0;
+    const cost = isFree ? 0 : state.bet;
+    if (cost > 0 && state.wallet < cost) { flashBalance(); return; }
+    state.spinning = true;
+    document.getElementById('spin-btn').disabled = true;
+    if (cost > 0) {
+      state.wallet -= cost;
+      // Contribute to jackpot
+      state.jackpot += Math.floor(cost * JACKPOT_CONTRIB * 100) / 100;
+      updateBalance(); updateJackpot(); saveAll();
+    }
+    sfx.pull();
+
+    const turbo = state.settings.turbo;
+    // Spin each reel
+    const finalSyms = [weightedSymbolPick(), weightedSymbolPick(), weightedSymbolPick()];
+    // Pre-roll animation
+    for (let r = 0; r < 3; r++) {
+      const reel = document.getElementById(`reel-${r}`);
+      reel.classList.add('spinning');
+      renderReel(r, weightedSymbolPick(), { spinning: true });
+    }
+    if (!turbo) {
+      const baseDelay = 360;
+      for (let r = 0; r < 3; r++) {
+        await wait(baseDelay + 200 * r + (r === 0 ? 0 : 50));
+        renderReel(r, finalSyms[r]);
+        sfx.stop();
+      }
+    } else {
+      await wait(120);
+      for (let r = 0; r < 3; r++) renderReel(r, finalSyms[r]);
+      sfx.stop();
+    }
+
+    // Evaluate
+    const result = evaluatePayline(finalSyms);
+    let totalWin = 0;
+    if (result) {
+      // Highlight winning cells
+      for (let r = 0; r < result.streak; r++) renderReel(r, finalSyms[r], { win: true });
+      // Show payline
+      const pl = document.getElementById('payline');
+      pl.classList.add('show');
+      setTimeout(() => pl.classList.remove('show'), 1200);
+      if (result.sym === 'JOLLY' && result.streak === 3) {
+        // JACKPOT
+        totalWin = state.jackpot;
+        state.jackpot = JACKPOT_RESET;
+        updateJackpot();
+        sfx.cannon();
+        showJackpotOverlay(totalWin);
+      } else {
+        totalWin = result.pay * state.bet;
+        sfx.win();
+        if (totalWin >= state.bet * 30) showBigWin('CANNON FIRE');
+      }
+    }
+
+    // Scatters → treasure map
+    const scatters = countScatters(finalSyms);
+    if (scatters >= 2) {
+      await wait(turbo ? 200 : 600);
+      openMap(scatters);
+    }
+
+    if (totalWin > 0) {
+      state.wallet += totalWin;
+      saveAll();
+      updateBalance();
+      showWinText(totalWin);
+      sfx.coin();
+    } else {
+      document.getElementById('win-display').innerText = '';
+    }
+
+    state.history.unshift({ t: Date.now(), bet: cost, win: totalWin, free: isFree });
+    state.history = state.history.slice(0, 20);
+    saveHistory();
+
+    state.spinning = false;
+    document.getElementById('spin-btn').disabled = false;
+
+    if (state.bonusFreeSpins > 0) {
+      state.bonusFreeSpins--;
+      if (state.bonusFreeSpins > 0) {
+        await wait(turbo ? 250 : 800);
+        spin();
+      } else {
+        showBigWin('FREE SPINS DONE');
+      }
+      return;
+    }
+    if (state.auto > 0) {
+      state.auto--;
+      updateAutoBtn();
+      if (state.wallet >= state.bet) {
+        await wait(turbo ? 100 : 350);
+        spin();
+      } else { state.auto = 0; updateAutoBtn(); }
+    }
+  }
+
+  function showWinText(amount) {
+    document.getElementById('win-display').innerText = `+ ${Math.round(amount).toLocaleString()} pieces`;
+  }
+  function showBigWin(text) {
+    const el = document.getElementById('bigwin-overlay');
+    document.getElementById('bw-text').innerText = text;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1400);
+    sfx.bigwin();
+  }
+  function showJackpotOverlay(amount) {
+    const el = document.getElementById('jackpot-overlay');
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 4100);
+  }
+  function flashBalance() {
+    const el = document.getElementById('balance');
+    el.style.color = 'var(--sunset)';
+    setTimeout(() => { el.style.color = ''; }, 500);
+  }
+
+  // Treasure map
+  function openMap(scatters) {
+    state.mapPicks = scatters === 3 ? 2 : 1;
+    state.mapRevealed = [];
+    state.mapItems = [];
+    // 9 squares: weighted distribution — 4 treasure, 4 anchor, 1 kraken
+    const items = [];
+    for (let i = 0; i < 4; i++) items.push({ type: 'X', value: 5 + Math.floor(rng() * 46) });
+    for (let i = 0; i < 4; i++) items.push({ type: 'ANCHOR' });
+    items.push({ type: 'KRAKEN' });
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    state.mapItems = items;
+    renderMap();
+    document.getElementById('map-overlay').classList.add('show');
+  }
+  function renderMap() {
+    const grid = document.getElementById('map-grid');
+    grid.innerHTML = state.mapItems.map((it, i) => {
+      const revealed = state.mapRevealed.includes(i);
+      let inner = revealed
+        ? (it.type === 'X' ? `<span style="color:#d4380d">✕</span>` :
+           it.type === 'ANCHOR' ? `<span style="color:#3a4a55">⚓</span>` :
+           `<span style="color:#2a1a6e">🦑</span>`)
+        : '';
+      const valTag = revealed && it.type === 'X' ? `<div style="font-size:0.8rem; color:#6b3e15; font-family:sans-serif">${it.value}×</div>` : '';
+      return `<div class="map-pick ${revealed ? 'revealed' : ''}" data-idx="${i}" onclick="pickMap(${i})">${inner}${valTag}</div>`;
+    }).join('');
+    document.getElementById('map-instruction').innerText = state.mapPicks > 0 ? `Picks remaining: ${state.mapPicks}` : 'No more picks.';
+  }
+  function pickMap(idx) {
+    if (state.mapPicks <= 0) return;
+    if (state.mapRevealed.includes(idx)) return;
+    state.mapRevealed.push(idx);
+    state.mapPicks--;
+    const item = state.mapItems[idx];
+    let resultText = '';
+    if (item.type === 'X') {
+      const w = item.value * state.bet;
+      state.wallet += w;
+      saveAll(); updateBalance();
+      resultText = `Treasure! +${w.toLocaleString()} pieces (${item.value}×).`;
+      sfx.coin();
+    } else if (item.type === 'ANCHOR') {
+      resultText = 'Just an anchor. Move on.';
+    } else if (item.type === 'KRAKEN') {
+      state.bonusFreeSpins = 5;
+      state.mapPicks = 0;
+      resultText = 'KRAKEN! +5 free spins consolation.';
+      sfx.bigwin();
+    }
+    renderMap();
+    document.getElementById('map-result').innerText = resultText;
+    if (state.mapPicks <= 0) {
+      document.getElementById('map-close-btn').style.display = 'block';
+    }
+  }
+  function closeMap() {
+    document.getElementById('map-overlay').classList.remove('show');
+    document.getElementById('map-close-btn').style.display = 'none';
+    document.getElementById('map-result').innerText = '';
+    // If we triggered free spins, auto-start
+    if (state.bonusFreeSpins > 0 && !state.spinning) {
+      setTimeout(() => spin(), 500);
+    }
+  }
+
+  function updateBalance() { document.getElementById('balance').innerText = Math.floor(state.wallet).toLocaleString(); }
+  function updateJackpot() {
+    document.getElementById('jackpot-value').innerText = Math.floor(state.jackpot).toLocaleString();
+    const el = document.getElementById('jp-pool-display');
+    if (el) el.innerText = Math.floor(state.jackpot).toLocaleString();
+  }
+  function adjustBet(op) {
+    if (state.spinning || state.bonusFreeSpins > 0) return;
+    let b = state.bet;
+    if (op === 'max') b = BET_MAX;
+    else b = Math.round(b * op);
+    b = Math.max(BET_MIN, Math.min(BET_MAX, b));
+    state.bet = b;
+    document.getElementById('bet-display').innerText = b;
+  }
+  function toggleAuto() {
+    if (state.spinning || state.bonusFreeSpins > 0) { state.auto = 0; updateAutoBtn(); return; }
+    if (state.auto > 0) state.auto = 0;
+    else {
+      const seq = [10, 25, 50];
+      const cur = state.settings.autoSpinDefault;
+      const idx = seq.indexOf(cur);
+      const next = seq[(idx + 1) % seq.length];
+      state.settings.autoSpinDefault = next;
+      saveSettings();
+      state.auto = cur;
+      document.getElementById('auto-default-display').innerText = String(next);
+      spin(); return;
+    }
+    updateAutoBtn();
+  }
+  function updateAutoBtn() {
+    const el = document.getElementById('auto-btn');
+    if (state.auto > 0) {
+      el.innerText = `AUTO ${state.auto}`;
+      el.style.background = 'rgba(26,92,58,0.3)';
+    } else { el.innerText = 'AUTO'; el.style.background = ''; }
+  }
+  function toggleTurbo() {
+    state.settings.turbo = !state.settings.turbo;
+    saveSettings();
+    document.getElementById('t-turbo').classList.toggle('on', state.settings.turbo);
+    document.getElementById('turbo-btn').style.background = state.settings.turbo ? 'rgba(196,122,43,0.25)' : '';
+  }
+  function toggleSound() {
+    state.settings.sound = !state.settings.sound;
+    saveSettings();
+    if (master) master.gain.value = state.settings.sound ? 0.2 : 0;
+    document.getElementById('t-sound').classList.toggle('on', state.settings.sound);
+  }
+  function resetWallet() {
+    if (!confirm('Reset wallet to 10,000?')) return;
+    state.wallet = 10000;
+    saveAll();
+    updateBalance();
+  }
+  function openSettings() {
+    if (state.spinning) return;
+    pushNav('settings');
+    document.getElementById('settings-modal').classList.remove('hidden');
+    document.getElementById('t-sound').classList.toggle('on', state.settings.sound);
+    document.getElementById('t-turbo').classList.toggle('on', state.settings.turbo);
+    document.getElementById('auto-default-display').innerText = state.settings.autoSpinDefault;
+    document.getElementById('rtp-display').innerText = RTP_LABEL;
+    document.getElementById('jp-pool-display').innerText = Math.floor(state.jackpot).toLocaleString();
+    renderPatchNotes();
+  }
+  function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); popNav(); }
+  function openPaytable() { pushNav('paytable'); document.getElementById('paytable-modal').classList.remove('hidden'); renderPaytable(); }
+  function closePaytable() { document.getElementById('paytable-modal').classList.add('hidden'); popNav(); }
+  function closeIntro() { document.getElementById('intro-modal').classList.add('hidden'); try { localStorage.setItem(`${CODE}_seenIntro`, '1'); } catch {} }
+
+  function renderPatchNotes() {
+    const el = document.getElementById('patch-notes');
+    el.innerHTML = PATCH_NOTES.map(p => {
+      const items = p.notes.map(n => `<li>${escapeHtml(n)}</li>`).join('');
+      return `<div style="margin-bottom:8px"><div style="color:var(--brass-bright); font-family:'Pirata One'; letter-spacing:0.05em; font-size:0.95rem">${p.v} · ${p.date}</div><ul style="padding-left:14px; margin:2px 0 0">${items}</ul></div>`;
+    }).join('');
+  }
+  function renderPaytable() {
+    const el = document.getElementById('paytable-body');
+    el.innerHTML = SYMBOLS.map(s => {
+      const tags = (s.scatter ? ' <span style="color:var(--sea-bright);font-size:0.75rem">SCATTER</span>' : '') + (s.k === 'JOLLY' ? ' <span style="color:var(--brass-bright);font-size:0.75rem">JACKPOT</span>' : '');
+      const pays = Object.keys(s.pays).sort((a,b)=>b-a).map(k => `${k}×${s.pays[k]}×`).join('  ·  ');
+      return `<div style="display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(196,122,43,0.15)"><div style="width:42px; height:42px; flex-shrink:0">${svgFor(s.k)}</div><div style="flex:1"><div style="color:var(--brass-bright); font-family:'Pirata One'; letter-spacing:0.05em; font-size:1rem">${s.k}${tags}</div><div style="color:var(--parch); font-size:0.82rem">${pays}</div></div></div>`;
+    }).join('');
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function showRefillBanner(amount) {
+    const b = document.getElementById('refill-banner');
+    b.innerText = `+${amount.toLocaleString()} DAILY REFILL`;
+    b.classList.add('show');
+    setTimeout(() => b.classList.remove('show'), 4200);
+  }
+
+  const _navStack = ['game'];
+  function pushNav(name) { _navStack.push(name); try { history.pushState({ name }, ''); } catch {} }
+  function popNav() { if (_navStack.length > 1) _navStack.pop(); }
+  window.addEventListener('popstate', () => {
+    const top = _navStack[_navStack.length - 1];
+    if (top === 'settings') closeSettings();
+    else if (top === 'paytable') closePaytable();
+  });
+
+  function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function init() {
+    loadAll();
+    updateBalance();
+    updateJackpot();
+    document.getElementById('bet-display').innerText = state.bet;
+    // Initial idle reel state
+    for (let r = 0; r < 3; r++) renderReel(r, ['JOLLY','COIN','CHEST','SWORDS'][r % 4]);
+    let seen = false;
+    try { seen = localStorage.getItem(`${CODE}_seenIntro`) === '1'; } catch {}
+    if (!seen) document.getElementById('intro-modal').classList.remove('hidden');
+    document.addEventListener('visibilitychange', () => {
+      if (master) master.gain.value = (state.settings.sound && !document.hidden) ? 0.2 : 0;
+    });
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  window.spin = spin;
+  window.adjustBet = adjustBet;
+  window.toggleAuto = toggleAuto;
+  window.toggleTurbo = toggleTurbo;
+  window.toggleSound = toggleSound;
+  window.openSettings = openSettings;
+  window.closeSettings = closeSettings;
+  window.openPaytable = openPaytable;
+  window.closePaytable = closePaytable;
+  window.closeIntro = closeIntro;
+  window.resetWallet = resetWallet;
+  window.pickMap = pickMap;
+  window.closeMap = closeMap;
+
+  document.addEventListener('DOMContentLoaded', init);
+  if (document.readyState !== 'loading') init();
+})();
+</script>
+</body>
+</html>
