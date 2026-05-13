@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0a1628">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
-<title>Dead Man's Reels v0.0.01</title>
+<title>Dead Man's Reels v0.0.02</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -266,7 +266,7 @@
     <button class="btn-spin" id="spin-btn" onclick="spin()">PULL</button>
     <button class="btn" id="turbo-btn" onclick="toggleTurbo()" style="min-height:52px">TURBO</button>
   </div>
-  <div class="text-center text-xs mt-2" style="color:rgba(196,122,43,0.55); font-family:'Pirata One'; letter-spacing:0.1em">v0.0.01 · Dead Man's Reels · Slot Launch</div>
+  <div class="text-center text-xs mt-2" style="color:rgba(196,122,43,0.55); font-family:'Pirata One'; letter-spacing:0.1em">v0.0.02 · Dead Man's Reels · Slot Launch</div>
 </footer>
 
 <div id="settings-modal" class="modal-bg hidden" onclick="if(event.target===this) closeSettings()">
@@ -291,7 +291,7 @@
     <p class="text-xs">3 reels, single centre payline. Wins pay LEFT-to-RIGHT.</p>
     <div id="paytable-body" class="mt-3"></div>
     <h3>Jackpot</h3>
-    <p>3× JOLLY ROGER hits the progressive jackpot — wins the full pool, resets to 500. Each spin adds 2% of bet.</p>
+    <p>3× JOLLY ROGER hits the progressive jackpot - wins the full pool, resets to 500. Each spin adds 2% of bet.</p>
     <h3>Treasure Map</h3>
     <p>2+ CHEST on the payline triggers a pick game. X marks 5-50× coin reward. Anchor = nothing. Kraken = 5 free spins.</p>
     <ul><li>2 chests = 1 pick</li><li>3 chests = 2 picks</li></ul>
@@ -328,6 +328,7 @@
   'use strict';
 
   const PATCH_NOTES = [
+    { v:'v0.0.02', date:'2026-05', notes:['Em-dash purge in paytable copy and comments.'] },
     { v:'v0.0.01', date:'2026-05', notes:['Initial OPW build. 3-reel single payline. Progressive JOLLY jackpot. CHEST treasure-map pick bonus.'] },
   ];
 
@@ -473,7 +474,7 @@
 
   function evaluatePayline(syms) {
     // syms is [s0, s1, s2]
-    // Check 3-of-a-kind (with wild logic — JOLLY pays 3× outright but isn't a wild here)
+    // Check 3-of-a-kind (with wild logic; JOLLY pays 3× outright but isn't a wild here)
     if (syms[0] === syms[1] && syms[1] === syms[2]) {
       const sd = SYMBOLS.find(s => s.k === syms[0]);
       if (sd && sd.pays[3]) return { streak: 3, sym: syms[0], pay: sd.pays[3] };
@@ -618,7 +619,7 @@
     state.mapPicks = scatters === 3 ? 2 : 1;
     state.mapRevealed = [];
     state.mapItems = [];
-    // 9 squares: weighted distribution — 4 treasure, 4 anchor, 1 kraken
+    // 9 squares: weighted distribution: 4 treasure, 4 anchor, 1 kraken
     const items = [];
     for (let i = 0; i < 4; i++) items.push({ type: 'X', value: 5 + Math.floor(rng() * 46) });
     for (let i = 0; i < 4; i++) items.push({ type: 'ANCHOR' });
